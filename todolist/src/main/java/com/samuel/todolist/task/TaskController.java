@@ -65,11 +65,24 @@ public class TaskController {
     }
 
     @PatchMapping("/{id}")
-    public TaskModel updatePatch( @RequestBody TaskModel taskModel, @PathVariable UUID id, HttpServletRequest request ) {
-        var task = taskRepository.findById(id);
+    public ResponseEntity<Object> updatePatch( @RequestBody TaskModel taskModel, @PathVariable UUID id, HttpServletRequest request ) {
+        TaskModel task = taskRepository.findById(id).orElse(null);
 
-        Utils.copyNonNullProperties(taskModel, task.get());
+        if (task == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body("A tarefa não existe.");
+        }
 
-        return taskRepository.save(task.get());
+        var userId = request.getAttribute("userId");
+
+        if (!task.getUserId().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body("O usuário não tem permissão para alterar essa tarefa.");
+        }
+
+        Utils.copyNonNullProperties(taskModel, task);
+
+        TaskModel taskUpdated = taskRepository.save(task);
+        return ResponseEntity.status(HttpStatus.OK).body(taskUpdated);
     }
 }
